@@ -12,6 +12,16 @@ clipshare-daemon = { path = "daemon" }
 server = "python -m clipshare server"
 daemon = "clipshare-daemon"
 
+[feature.build.dependencies]
+cargo-zigbuild = ">=0.19"
+zig = ">=0.11"
+
+[feature.build.tasks]
+release = { cmd = "python scripts/build_release.py", description = "Cross-compile daemon for all targets" }
+
+[environments]
+build = { features = ["build"], no-default-feature = true }
+
 # Python server package
 [package]
 name = "clipshare"
