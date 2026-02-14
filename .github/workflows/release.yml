@@ -3,13 +3,26 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
+  release-please:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
   build:
     runs-on: ubuntu-latest
     strategy:
@@ -51,9 +64,9 @@ jobs:
           name: ${{ matrix.target }}
           path: ${{ env.ARTIFACT }}
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+  upload-release:
+    if: needs.release-please.outputs.release_created == 'true'
+    needs: [release-please, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -62,5 +75,5 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: clipshare-daemon-*
-          generate_release_notes: true
