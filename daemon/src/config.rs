@@ -6,17 +6,12 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct ConfigFile {
-    daemon: Option<DaemonToml>,
+    #[serde(default)]
+    daemon: DaemonConfig,
 }
 
 #[derive(Deserialize)]
-struct DaemonToml {
-    server_url: Option<String>,
-    poll_interval: Option<f64>,
-    hostname: Option<String>,
-    verify_ssl: Option<bool>,
-}
-
+#[serde(default)]
 pub struct DaemonConfig {
     pub server_url: String,
     pub poll_interval: f64,
@@ -24,33 +19,24 @@ pub struct DaemonConfig {
     pub verify_ssl: bool,
 }
 
-pub fn load_daemon_config() -> DaemonConfig {
-    let mut config = DaemonConfig {
-        server_url: "https://localhost:8443".to_string(),
-        poll_interval: 1.0,
-        hostname: String::new(),
-        verify_ssl: false,
-    };
-
-    let path = config_file_path();
-    if let Ok(text) = fs::read_to_string(&path) {
-        if let Ok(file) = toml::from_str::<ConfigFile>(&text) {
-            if let Some(d) = file.daemon {
-                if let Some(v) = d.server_url {
-                    config.server_url = v;
-                }
-                if let Some(v) = d.poll_interval {
-                    config.poll_interval = v;
-                }
-                if let Some(v) = d.hostname {
-                    config.hostname = v;
-                }
-                if let Some(v) = d.verify_ssl {
-                    config.verify_ssl = v;
-                }
-            }
+impl Default for DaemonConfig {
+    fn default() -> Self {
+        Self {
+            server_url: "https://localhost:8443".to_string(),
+            poll_interval: 1.0,
+            hostname: String::new(),
+            verify_ssl: false,
         }
     }
+}
+
+pub fn load_daemon_config() -> DaemonConfig {
+    let path = config_file_path();
+    let mut config = fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| toml::from_str::<ConfigFile>(&text).ok())
+        .map(|f| f.daemon)
+        .unwrap_or_default();
 
     if config.hostname.is_empty() {
         config.hostname = env::var("HOSTNAME").unwrap_or_else(|_| {
