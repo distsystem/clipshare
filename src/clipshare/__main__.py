@@ -1,5 +1,3 @@
-"""CLI entry point: python -m clipshare server."""
-
 import argparse
 import logging
 

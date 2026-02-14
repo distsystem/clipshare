@@ -1,5 +1,3 @@
-"""Configuration loading and data models."""
-
 import tomllib
 from pathlib import Path
 

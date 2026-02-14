@@ -1,5 +1,3 @@
-"""SQLite storage for clipboard entries."""
-
 import hashlib
 import json
 from pathlib import Path
@@ -42,7 +40,6 @@ class EntryStore:
 
     async def add(self, entry: ClipboardEntry) -> bool:
         """Add entry. Returns False if content was deduplicated (timestamp refreshed)."""
-        assert self._db is not None
         contents_json = json.dumps([c.model_dump() for c in entry.contents])
         content_hash = _hash_contents(contents_json)
 
@@ -69,7 +66,6 @@ class EntryStore:
         return True
 
     async def list(self, limit: int = 50, offset: int = 0) -> list[ClipboardEntry]:
-        assert self._db is not None
         cursor = await self._db.execute(
             "SELECT id, source_host, timestamp_ms, contents_json, text_preview "
             "FROM entries ORDER BY timestamp_ms DESC LIMIT ? OFFSET ?",
@@ -79,7 +75,6 @@ class EntryStore:
         return [_row_to_entry(r) for r in rows]
 
     async def get(self, entry_id: str) -> ClipboardEntry | None:
-        assert self._db is not None
         cursor = await self._db.execute(
             "SELECT id, source_host, timestamp_ms, contents_json, text_preview "
             "FROM entries WHERE id = ?",
@@ -89,13 +84,11 @@ class EntryStore:
         return _row_to_entry(row) if row else None
 
     async def delete(self, entry_id: str) -> bool:
-        assert self._db is not None
         cursor = await self._db.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
         await self._db.commit()
         return cursor.rowcount > 0
 
     async def _evict(self) -> None:
-        assert self._db is not None
         await self._db.execute(
             "DELETE FROM entries WHERE id NOT IN "
             "(SELECT id FROM entries ORDER BY timestamp_ms DESC LIMIT ?)",

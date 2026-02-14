@@ -1,5 +1,3 @@
-"""FastAPI server with REST API, WebSocket, and static files."""
-
 import json
 import logging
 import time
@@ -135,7 +133,7 @@ async def _broadcast(entry: ClipboardEntry) -> None:
             continue
         try:
             await ws.send_text(msg)
-        except Exception:
+        except (WebSocketDisconnect, RuntimeError, ConnectionError):
             dead.append(conn_id)
     for conn_id in dead:
         _ws_connections.pop(conn_id, None)

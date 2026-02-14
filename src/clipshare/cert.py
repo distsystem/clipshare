@@ -1,6 +1,5 @@
-"""Self-signed certificate generation for HTTPS."""
-
 import datetime
+import ipaddress
 import logging
 import socket
 from pathlib import Path
@@ -43,7 +42,7 @@ def ensure_cert(cert_dir: Path) -> tuple[Path, Path]:
 
     san_entries: list[x509.GeneralName] = [x509.DNSName(hostname), x509.DNSName("localhost")]
     for ip in _get_lan_ips():
-        san_entries.append(x509.IPAddress(ipaddress_from_str(ip)))
+        san_entries.append(x509.IPAddress(ipaddress.ip_address(ip)))
 
     now = datetime.datetime.now(datetime.UTC)
     cert = (
@@ -69,9 +68,3 @@ def ensure_cert(cert_dir: Path) -> tuple[Path, Path]:
 
     log.info("Certificate generated: %s", cert_path)
     return cert_path, key_path
-
-
-def ipaddress_from_str(addr: str):
-    import ipaddress
-
-    return ipaddress.ip_address(addr)
