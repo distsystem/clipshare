@@ -1,11 +1,17 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
+    ".": {
+      "release-type": "python",
+      "component": "clipshare",
+      "bump-minor-pre-major": true
+    },
     "daemon": {
       "release-type": "rust",
+      "component": "clipshare-daemon",
       "bump-minor-pre-major": true
     }
   },
-  "include-component-in-tag": false,
+  "include-component-in-tag": true,
   "include-v-in-tag": true
 }
