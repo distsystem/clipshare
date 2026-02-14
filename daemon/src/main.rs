@@ -27,7 +27,7 @@ fn main() {
         config.poll_interval
     );
 
-    let reader = clipboard::get_reader();
+    let mut reader = clipboard::ClipboardReader::new();
     let agent = build_agent(config.verify_ssl);
 
     let mut last_hash = String::new();
