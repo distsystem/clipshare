@@ -1,0 +1,14 @@
+[workspace]
+name = "clipshare"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = ">=3.11"
+
+[pypi-dependencies]
+clipshare = { path = ".", editable = true }
+
+[tasks]
+server = "python -m clipshare server"
+daemon = "cargo build --manifest-path daemon/Cargo.toml && ./daemon/target/debug/clipshare-daemon"

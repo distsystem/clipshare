@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClipShare</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0c0e;
+    --surface: #16161a;
+    --surface-hover: #1e1e24;
+    --border: #2a2a32;
+    --text: #e2e2e8;
+    --text-dim: #72727e;
+    --accent: #5de4c7;
+    --accent-dim: #5de4c720;
+    --danger: #f87272;
+    --type-text: #7dd3fc;
+    --type-html: #c084fc;
+    --type-image: #fbbf24;
+    --radius: 8px;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-body: 'DM Sans', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* subtle grid pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    color: var(--bg);
+    font-weight: 600;
+    font-family: var(--font-mono);
+  }
+
+  .logo h1 {
+    font-family: var(--font-mono);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    transition: background 0.3s;
+  }
+
+  .status-dot.connected {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-dim);
+  }
+
+  .search-bar {
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+
+  .search-bar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-bar input:focus {
+    border-color: var(--accent);
+  }
+
+  .search-bar input::placeholder { color: var(--text-dim); }
+
+  .search-bar svg {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    width: 18px;
+    height: 18px;
+  }
+
+  .entries {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .entry {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    animation: slideIn 0.25s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .entry:hover {
+    background: var(--surface-hover);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .entry:active { transform: translateY(0); }
+
+  .entry-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  .entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-dim);
+  }
+
+  .mime-badge {
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .mime-badge[data-type="text"] { background: #7dd3fc20; color: var(--type-text); }
+  .mime-badge[data-type="html"] { background: #c084fc20; color: var(--type-html); }
+  .mime-badge[data-type="image"] { background: #fbbf2420; color: var(--type-image); }
+
+  .entry-actions {
+    display: flex;
+    gap: 0.25rem;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .entry:hover .entry-actions { opacity: 1; }
+
+  .btn-icon {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .btn-icon:hover { color: var(--text); background: var(--border); }
+  .btn-icon.delete:hover { color: var(--danger); }
+
+  .entry-preview {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 4.5em;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .entry-preview.has-overflow::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1.5em;
+    background: linear-gradient(transparent, var(--surface));
+    pointer-events: none;
+  }
+
+  .entry:hover .entry-preview.has-overflow::after {
+    background: linear-gradient(transparent, var(--surface-hover));
+  }
+
+  .entry-thumbnail {
+    max-width: 100%;
+    max-height: 120px;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--accent);
+    color: var(--bg);
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+
+  .empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">C</div>
+      <h1>ClipShare</h1>
+    </div>
+    <div class="status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">disconnected</span>
+    </div>
+  </header>
+
+  <div class="search-bar">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"/>
+    </svg>
+    <input type="text" id="searchInput" placeholder="Search clipboard entries...">
+  </div>
+
+  <div class="entries" id="entries"></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const entriesEl = document.getElementById('entries');
+const searchInput = document.getElementById('searchInput');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const toastEl = document.getElementById('toast');
+
+let allEntries = [];
+let ws = null;
+let reconnectTimer = null;
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+
+function mimeLabel(mime) {
+  if (mime === 'text/plain') return 'text';
+  if (mime === 'text/html') return 'html';
+  if (mime === 'image/png') return 'image';
+  return mime.split('/').pop();
+}
+
+function mimeType(mime) {
+  if (mime.startsWith('image/')) return 'image';
+  if (mime === 'text/html') return 'html';
+  return 'text';
+}
+
+function timeAgo(ms) {
+  const diff = Date.now() - ms;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return new Date(ms).toLocaleDateString();
+}
+
+function renderEntry(entry) {
+  const el = document.createElement('div');
+  el.className = 'entry';
+  el.dataset.id = entry.id;
+
+  const types = entry.contents.map(c => c.mime_type);
+  const badges = types.map(t =>
+    `<span class="mime-badge" data-type="${mimeType(t)}">${mimeLabel(t)}</span>`
+  ).join('');
+
+  let preview = '';
+  const textContent = entry.contents.find(c => c.mime_type === 'text/plain');
+  const imgContent = entry.contents.find(c => c.mime_type === 'image/png');
+
+  if (textContent) {
+    const text = textContent.data.length > 300 ? textContent.data.slice(0, 300) : textContent.data;
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const overflow = textContent.data.length > 200 ? ' has-overflow' : '';
+    preview = `<div class="entry-preview${overflow}">${escaped}</div>`;
+  } else if (imgContent) {
+    preview = `<img class="entry-thumbnail" src="data:image/png;base64,${imgContent.data}" alt="clipboard image">`;
+  }
+
+  el.innerHTML = `
+    <div class="entry-header">
+      <div class="entry-meta">
+        ${badges}
+        <span>${entry.source_host}</span>
+        <span>${timeAgo(entry.timestamp_ms)}</span>
+      </div>
+      <div class="entry-actions">
+        <button class="btn-icon delete" onclick="deleteEntry(event, '${entry.id}')" title="Delete">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    ${preview}
+  `;
+
+  el.addEventListener('click', () => copyToClipboard(entry));
+  return el;
+}
+
+function renderAll() {
+  const query = searchInput.value.toLowerCase();
+  const filtered = query
+    ? allEntries.filter(e => e.text_preview.toLowerCase().includes(query))
+    : allEntries;
+
+  entriesEl.innerHTML = '';
+  if (filtered.length === 0) {
+    entriesEl.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">&#9113;</div>
+        ${query ? 'No matching entries' : 'No clipboard entries yet'}
+      </div>
+    `;
+    return;
+  }
+  filtered.forEach(e => entriesEl.appendChild(renderEntry(e)));
+}
+
+async function copyToClipboard(entry) {
+  try {
+    const items = [];
+    for (const c of entry.contents) {
+      if (c.mime_type === 'text/plain') {
+        items.push(new ClipboardItem({ 'text/plain': new Blob([c.data], { type: 'text/plain' }) }));
+      } else if (c.mime_type === 'text/html') {
+        items.push(new ClipboardItem({
+          'text/html': new Blob([c.data], { type: 'text/html' }),
+          'text/plain': new Blob([entry.text_preview || c.data], { type: 'text/plain' }),
+        }));
+      } else if (c.mime_type === 'image/png') {
+        const bin = atob(c.data);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        items.push(new ClipboardItem({ 'image/png': new Blob([bytes], { type: 'image/png' }) }));
+      }
+    }
+    if (items.length > 0) {
+      await navigator.clipboard.write(items);
+      showToast('Copied to clipboard');
+    }
+  } catch (err) {
+    console.error('Clipboard write failed:', err);
+    // fallback for text
+    const text = entry.contents.find(c => c.mime_type === 'text/plain');
+    if (text) {
+      await navigator.clipboard.writeText(text.data);
+      showToast('Copied (text only)');
+    } else {
+      showToast('Copy failed — check HTTPS');
+    }
+  }
+}
+
+async function deleteEntry(event, id) {
+  event.stopPropagation();
+  try {
+    await fetch(`/api/entries/${id}`, { method: 'DELETE' });
+    allEntries = allEntries.filter(e => e.id !== id);
+    renderAll();
+  } catch (err) {
+    console.error('Delete failed:', err);
+  }
+}
+
+async function loadEntries() {
+  try {
+    const resp = await fetch('/api/entries?limit=100');
+    allEntries = await resp.json();
+    renderAll();
+  } catch (err) {
+    console.error('Failed to load entries:', err);
+  }
+}
+
+function connectWs() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = prompt_hostname || 'browser';
+  ws = new WebSocket(`${proto}//${location.host}/ws?host=${encodeURIComponent(host)}`);
+
+  ws.onopen = () => {
+    statusDot.classList.add('connected');
+    statusText.textContent = 'connected';
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  };
+
+  ws.onclose = () => {
+    statusDot.classList.remove('connected');
+    statusText.textContent = 'disconnected';
+    reconnectTimer = setTimeout(connectWs, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'new_entry') {
+      allEntries.unshift(msg.entry);
+      renderAll();
+    }
+  };
+}
+
+const prompt_hostname = (() => {
+  try { return location.hostname; } catch { return 'browser'; }
+})();
+
+searchInput.addEventListener('input', renderAll);
+
+loadEntries();
+connectWs();
+
+// refresh timestamps periodically
+setInterval(() => {
+  document.querySelectorAll('.entry-meta span:last-child').forEach((el, i) => {
+    if (allEntries[i]) el.textContent = timeAgo(allEntries[i].timestamp_ms);
+  });
+}, 30000);
+</script>
+</body>
+</html>
