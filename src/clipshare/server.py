@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import time
@@ -18,7 +17,7 @@ from clipshare.config import (
     ServerConfig,
     load_server_config,
 )
-from clipshare.discovery import run_broadcaster
+from clipshare.discovery import mdns_service
 from clipshare.storage import EntryStore
 
 log = logging.getLogger(__name__)
@@ -39,9 +38,8 @@ async def _lifespan(app: fastapi.FastAPI):
     _store = EntryStore(cfg.db_path, cfg.max_entries)
     await _store.init()
     log.info("Storage initialized: %s", cfg.db_path)
-    broadcaster = asyncio.create_task(run_broadcaster(cfg.port))
-    yield
-    broadcaster.cancel()
+    async with mdns_service(cfg.port):
+        yield
     await _store.close()
 
 

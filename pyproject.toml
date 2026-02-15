@@ -12,4 +12,6 @@ dependencies = [
     "aiosqlite",
     "cryptography",
     "pydantic",
+    "platformdirs",
+    "zeroconf",
 ]

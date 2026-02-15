@@ -1,62 +1,58 @@
 use std::collections::HashMap;
-use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 
-const BROADCAST_PORT: u16 = 4243;
-const EXPIRY: Duration = Duration::from_secs(30);
+use mdns_sd::{ServiceDaemon, ServiceEvent};
 
-pub type ServerRegistry = Arc<Mutex<HashMap<String, Instant>>>;
+const SERVICE_TYPE: &str = "_clipshare._tcp.local.";
+
+/// Maps mDNS fullname → server URL (one URL per service instance).
+pub type ServerRegistry = Arc<Mutex<HashMap<String, String>>>;
 
 pub fn spawn_listener() -> ServerRegistry {
     let registry: ServerRegistry = Arc::new(Mutex::new(HashMap::new()));
     let reg = registry.clone();
 
     std::thread::spawn(move || {
-        let socket = match UdpSocket::bind(("0.0.0.0", BROADCAST_PORT)) {
-            Ok(s) => s,
+        let mdns = match ServiceDaemon::new() {
+            Ok(d) => d,
             Err(e) => {
-                log::warn!("Discovery bind failed: {e}, running without auto-discovery");
+                log::warn!("mDNS daemon failed to start: {e}, running without auto-discovery");
                 return;
             }
         };
 
-        if let Err(e) = socket.set_broadcast(true) {
-            log::warn!("Set broadcast failed: {e}");
-            return;
-        }
+        let receiver = match mdns.browse(SERVICE_TYPE) {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!("mDNS browse failed: {e}");
+                return;
+            }
+        };
 
-        socket.set_read_timeout(Some(Duration::from_secs(5))).ok();
-        let mut buf = [0u8; 1024];
+        log::info!("mDNS browse started for {SERVICE_TYPE}");
 
-        loop {
-            match socket.recv_from(&mut buf) {
-                Ok((len, src)) => {
-                    if let Ok(text) = std::str::from_utf8(&buf[..len]) {
-                        if let Ok(ann) = serde_json::from_str::<serde_json::Value>(text) {
-                            if ann.get("service").and_then(|v| v.as_str()) == Some("clipshare") {
-                                let port =
-                                    ann.get("port").and_then(|v| v.as_u64()).unwrap_or(8443);
-                                let protocol = ann
-                                    .get("protocol")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("https");
-                                let url = format!("{protocol}://{}:{port}", src.ip());
-                                log::debug!("Discovered server: {url}");
-                                reg.lock().unwrap().insert(url, Instant::now());
-                            }
-                        }
+        while let Ok(event) = receiver.recv() {
+            match event {
+                ServiceEvent::ServiceResolved(info) => {
+                    let port = info.get_port();
+                    let protocol = info
+                        .get_property_val_str("protocol")
+                        .unwrap_or("https");
+                    let fullname = info.get_fullname().to_string();
+
+                    if let Some(addr) = info.get_addresses_v4().into_iter().next() {
+                        let url = format!("{protocol}://{addr}:{port}");
+                        log::info!("Discovered server: {url}");
+                        reg.lock().unwrap().insert(fullname, url);
                     }
                 }
-                Err(ref e)
-                    if e.kind() == std::io::ErrorKind::WouldBlock
-                        || e.kind() == std::io::ErrorKind::TimedOut => {}
-                Err(e) => {
-                    log::debug!("Discovery recv error: {e}");
+                ServiceEvent::ServiceRemoved(_stype, fullname) => {
+                    if let Some(url) = reg.lock().unwrap().remove(&fullname) {
+                        log::info!("Server removed: {url}");
+                    }
                 }
+                _ => {}
             }
-
-            reg.lock().unwrap().retain(|_, ts| ts.elapsed() < EXPIRY);
         }
     });
 
@@ -64,11 +60,5 @@ pub fn spawn_listener() -> ServerRegistry {
 }
 
 pub fn active_servers(registry: &ServerRegistry) -> Vec<String> {
-    registry
-        .lock()
-        .unwrap()
-        .iter()
-        .filter(|(_, ts)| ts.elapsed() < EXPIRY)
-        .map(|(url, _)| url.clone())
-        .collect()
+    registry.lock().unwrap().values().cloned().collect()
 }
