@@ -25,14 +25,14 @@ pixi run server
 # 另一个终端，启动 daemon
 pixi run daemon
 
-# 浏览器访问 https://localhost:8443
+# 浏览器访问 https://localhost:4243
 ```
 
 多机使用时，编辑 `~/.config/clipshare/config.toml`：
 
 ```toml
 [daemon]
-server_url = "https://192.168.1.100:8443"
+server_url = "https://192.168.1.100:4243"
 verify_ssl = false
 ```
 

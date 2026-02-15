@@ -1,7 +1,12 @@
 import tomllib
 from pathlib import Path
 
+import platformdirs
 import pydantic
+
+_APP_NAME = "clipshare"
+_CONFIG_DIR = Path(platformdirs.user_config_dir(_APP_NAME))
+_DATA_DIR = Path(platformdirs.user_data_dir(_APP_NAME))
 
 
 class MimeContent(pydantic.BaseModel):
@@ -18,25 +23,15 @@ class ClipboardEntry(pydantic.BaseModel):
 
 
 class ServerConfig(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(validate_default=True)
-
     host: str = "0.0.0.0"
-    port: int = 8443
+    port: int = 4243
     max_entries: int = 100
-    db_path: Path = Path("~/.local/share/clipshare/entries.db")
-    cert_dir: Path = Path("~/.local/share/clipshare")
-
-    @pydantic.field_validator("db_path", "cert_dir", mode="after")
-    @classmethod
-    def _expand_user(cls, v: Path) -> Path:
-        return v.expanduser()
-
-
-_CONFIG_PATH = Path("~/.config/clipshare/config.toml")
+    db_path: Path = _DATA_DIR / "entries.db"
+    cert_dir: Path = _DATA_DIR
 
 
 def _load_toml() -> dict:
-    path = _CONFIG_PATH.expanduser()
+    path = _CONFIG_DIR / "config.toml"
     if not path.exists():
         return {}
     with open(path, "rb") as f:
