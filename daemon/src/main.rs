@@ -1,6 +1,6 @@
 mod api;
 mod clipboard;
-mod config;
+mod discovery;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -19,20 +19,21 @@ fn main() {
     )
     .init();
 
-    let config = config::load_daemon_config();
-    log::info!(
-        "Server: {}, host: {}, interval: {:.1}s",
-        config.server_url,
-        config.hostname,
-        config.poll_interval
-    );
+    let hostname = std::env::var("HOSTNAME").unwrap_or_else(|_| {
+        hostname::get()
+            .map(|h| h.to_string_lossy().into_owned())
+            .unwrap_or_else(|_| "unknown".to_string())
+    });
+
+    let registry = discovery::spawn_listener();
+    log::info!("Discovery started, host: {hostname}");
 
     let mut reader = clipboard::ClipboardReader::new();
-    let agent = build_agent(config.verify_ssl);
+    let agent = build_agent();
 
     let mut last_hash = String::new();
     loop {
-        std::thread::sleep(Duration::from_secs_f64(config.poll_interval));
+        std::thread::sleep(Duration::from_secs(1));
 
         let contents = reader.read();
         if contents.is_empty() {
@@ -44,14 +45,23 @@ fn main() {
             continue;
         }
 
+        let servers = discovery::active_servers(&registry);
+        if servers.is_empty() {
+            log::debug!("No servers discovered, skipping upload");
+            continue;
+        }
+
         last_hash = current_hash;
         log::info!(
-            "Clipboard changed, uploading ({} content(s))",
+            "Clipboard changed, uploading to {} server(s) ({} content(s))",
+            servers.len(),
             contents.len()
         );
 
-        if let Err(e) = api::push_entry(&agent, &config, &contents) {
-            log::warn!("Upload failed: {}", e);
+        for url in &servers {
+            if let Err(e) = api::push_entry(&agent, url, &hostname, &contents) {
+                log::warn!("Upload to {url} failed: {e}");
+            }
         }
     }
 }
@@ -65,11 +75,7 @@ fn hash_contents(contents: &[api::MimeContent]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-fn build_agent(verify_ssl: bool) -> ureq::Agent {
-    if verify_ssl {
-        return ureq::agent();
-    }
-
+fn build_agent() -> ureq::Agent {
     let tls_config = rustls::ClientConfig::builder()
         .dangerous()
         .with_custom_certificate_verifier(Arc::new(NoVerifier))

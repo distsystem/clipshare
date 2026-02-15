@@ -1,7 +1,5 @@
 use serde::Serialize;
 
-use crate::config::DaemonConfig;
-
 #[derive(Serialize, Clone)]
 pub struct MimeContent {
     pub mime_type: String,
@@ -16,12 +14,13 @@ struct CreateEntryRequest<'a> {
 
 pub fn push_entry(
     agent: &ureq::Agent,
-    config: &DaemonConfig,
+    server_url: &str,
+    hostname: &str,
     contents: &[MimeContent],
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let url = format!("{}/api/entries", config.server_url.trim_end_matches('/'));
+    let url = format!("{}/api/entries", server_url.trim_end_matches('/'));
     let body = CreateEntryRequest {
-        source_host: &config.hostname,
+        source_host: hostname,
         contents,
     };
 
