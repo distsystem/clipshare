@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/distsystem/clipshare/compare/clipshare-daemon-v0.2.0...clipshare-daemon-v0.3.0) (2026-02-15)
+
+
+### Features
+
+* **discovery:** replace UDP broadcast with mDNS service discovery ([0e9a072](https://github.com/distsystem/clipshare/commit/0e9a072233bd76b10d53f220429591a1a22841d7))
+
 ## [0.2.0](https://github.com/distsystem/clipshare/compare/clipshare-daemon-v0.1.0...clipshare-daemon-v0.2.0) (2026-02-15)
 
 
