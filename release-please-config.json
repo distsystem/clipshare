@@ -4,7 +4,8 @@
     ".": {
       "release-type": "python",
       "component": "clipshare",
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "extra-files": ["pixi.toml"]
     },
     "daemon": {
       "release-type": "rust",

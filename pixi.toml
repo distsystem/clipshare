@@ -25,7 +25,7 @@ build = { features = ["build"], no-default-feature = true }
 # Python server package
 [package]
 name = "clipshare"
-version = "0.1.0"
+version = "0.1.0" # x-release-please-version
 
 [package.build]
 backend = { name = "pixi-build-python", version = "*", channels = ["https://prefix.dev/conda-forge"] }

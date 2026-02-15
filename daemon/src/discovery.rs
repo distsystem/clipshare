@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use std::net::{Ipv4Addr, UdpSocket};
+use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-const MULTICAST_GROUP: Ipv4Addr = Ipv4Addr::new(239, 255, 42, 1);
-const MULTICAST_PORT: u16 = 4243;
+const BROADCAST_PORT: u16 = 4243;
 const EXPIRY: Duration = Duration::from_secs(30);
 
 pub type ServerRegistry = Arc<Mutex<HashMap<String, Instant>>>;
@@ -14,7 +13,7 @@ pub fn spawn_listener() -> ServerRegistry {
     let reg = registry.clone();
 
     std::thread::spawn(move || {
-        let socket = match UdpSocket::bind(("0.0.0.0", MULTICAST_PORT)) {
+        let socket = match UdpSocket::bind(("0.0.0.0", BROADCAST_PORT)) {
             Ok(s) => s,
             Err(e) => {
                 log::warn!("Discovery bind failed: {e}, running without auto-discovery");
@@ -22,8 +21,8 @@ pub fn spawn_listener() -> ServerRegistry {
             }
         };
 
-        if let Err(e) = socket.join_multicast_v4(&MULTICAST_GROUP, &Ipv4Addr::UNSPECIFIED) {
-            log::warn!("Join multicast failed: {e}");
+        if let Err(e) = socket.set_broadcast(true) {
+            log::warn!("Set broadcast failed: {e}");
             return;
         }
 
